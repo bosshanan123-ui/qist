@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="row between"><h1 style="font-size:2.3rem;margin:0">Reports</h1><button class="btn ghost noprint" onclick="window.print()">Print report</button></div>
+<div class="grid" style="margin-top:24px">
+  <div class="glass stat"><b>{{ profit|money }}</b><span>Markup earned on active and completed sales</span></div>
+  <div class="glass stat"><b>{{ fines|money }}</b><span>Late fines collected</span></div>
+</div>
+<div class="grid" style="--min:420px;margin-top:18px;align-items:start">
+  <div class="glass"><h3>Monthly recovery (last 6 months)</h3>
+  {% if months %}<table><thead><tr><th>Month</th><th class="right">Collected</th></tr></thead><tbody>{% for m, amt in months %}<tr><td>{{ m }}</td><td class="num right">{{ amt|money }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<p class="mute">No confirmed payments yet.</p>{% endif %}</div>
+  <div class="glass"><h3>Active defaulters</h3>
+  {% if defaulters %}<div class="scroll"><table><thead><tr><th>Customer</th><th>Overdue</th><th class="right">Owed</th></tr></thead><tbody>
+  {% for d in defaulters %}<tr><td><a href="{{ url_for('application', app_id=d.app.id) }}">{{ d.app.customer.name }}</a><br><span class="small mute">{{ d.app.customer.phone }} &middot; {{ d.app.product.name }}</span></td><td>{{ d.n }}</td><td class="num right">{{ d.amt|money }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="mute">No customer is overdue.</p>{% endif %}</div>
+</div>
+<div class="glass" style="margin-top:18px"><h3>Audit log (latest 40)</h3><div class="scroll"><table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+{% for l in log %}<tr><td class="num">{{ l.created_at[:16]|replace('T',' ') }}</td><td>{{ l.action|label }}</td><td class="small mute">{{ l.detail }}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

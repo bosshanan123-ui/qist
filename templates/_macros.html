@@ -1,0 +1,29 @@
+{% macro calc_core(plans, price, fixed=False) %}
+<div class="field"><label for="c-price">Cash price (Rs)</label>
+  <input id="c-price" type="number" name="price" value="{{ price }}" min="1000" step="500" {{ 'readonly' if fixed }}></div>
+<div class="field"><label>Installment plan</label>
+  <div class="pills">{% for p in plans %}
+    <input type="radio" name="months" id="m{{ p.months }}" value="{{ p.months }}" {{ 'checked' if p.months == 6 or (loop.last and plans|length < 2) }}>
+    <label for="m{{ p.months }}">{{ p.months }} months</label>{% endfor %}</div></div>
+<div class="field"><label for="c-down">Down payment (Rs), minimum {{ MIN_DOWN_PCT }}%</label>
+  <input id="c-down" type="number" name="down" min="0" step="100"></div>
+<div class="result"><span>Pay each month for <span data-out="months"></span> months</span><b data-out="monthly">Rs 0</b>
+  <p class="small mute" style="margin-top:12px">Installment price <strong data-out="total"></strong> (includes <span data-out="markup"></span> markup) &middot; minimum down payment <strong data-out="min"></strong></p></div>
+{% endmacro %}
+
+{% macro pcard(p) %}
+<article class="glass pcard" data-pname="{{ (p.name ~ ' ' ~ p.category)|lower }}">
+  {% if p.image_url %}<img class="pimg" src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">{% else %}<div class="pimg" aria-hidden="true">{{ p.name[0] }}</div>{% endif %}
+  <div class="pbody">
+    <span class="small mute">{{ p.category }}</span>
+    <h3>{{ p.name }}</h3>
+    {% if p.description %}<p class="small mute">{{ p.description }}</p>{% endif %}
+    <div class="price">{{ p.cash_price|money }}</div>
+    <div class="row between" style="margin-top:auto">
+      {% if p.stock > 0 %}<span class="small mute">{{ p.stock }} in stock</span>
+        <a class="btn sm" href="{{ url_for('apply', pid=p.id) }}">Apply on installments</a>
+      {% else %}<span class="badge s-rejected">Out of stock</span>{% endif %}
+    </div>
+  </div>
+</article>
+{% endmacro %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+<h1 style="font-size:2.3rem">Accounts</h1>
+<form class="glass" method="post">{{ csrf_field() }}<h3>Create an account</h3>
+  <div class="grid" style="--min:200px"><div><label for="n">Full name</label><input id="n" name="name" required></div><div><label for="e">Email</label><input id="e" name="email" type="email" required></div>
+  <div><label for="ph">Phone</label><input id="ph" name="phone" placeholder="0300-1234567" required></div><div><label for="cn">CNIC</label><input id="cn" name="cnic" placeholder="35202-1234567-1" required></div>
+  <div><label for="pw">Password</label><input id="pw" name="password" type="password" minlength="8" required></div>
+  <div><label for="r">Role</label><select id="r" name="role"><option value="officer">Verification officer</option><option value="admin">Admin</option><option value="customer">Customer</option></select></div></div>
+  <button class="btn" style="margin-top:18px" type="submit">Create account</button></form>
+<div class="glass" style="margin-top:18px"><div class="scroll"><table><thead><tr><th>Name</th><th>Email</th><th>CNIC</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>
+{% for u in users %}<tr><td>{{ u.name }}</td><td>{{ u.email }}</td><td class="num">{{ u.cnic }}</td><td>{{ u.role|label }}</td>
+<td><span class="badge s-{{ 'active' if u.active else 'rejected' }}">{{ 'Active' if u.active else 'Disabled' }}</span></td>
+<td><form method="post" action="{{ url_for('admin_user_toggle', uid=u.id) }}">{{ csrf_field() }}<button class="btn ghost sm">{{ 'Disable' if u.active else 'Enable' }}</button></form></td></tr>{% endfor %}</tbody></table></div></div>
+<p class="small mute">Accounts are disabled instead of deleted so payment history and the audit log stay complete.</p>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}My installments{% endblock %}
+{% block content %}
+<h1 style="font-size:2.4rem">Hello, {{ user.name.split()[0] }}</h1>
+{% if overdue %}<div class="flash error">You have {{ overdue }} overdue installment{{ 's' if overdue > 1 }}. A {{ FINE_PCT }}% late fine is added to each one until it is paid.</div>{% endif %}
+{% if apps %}
+<div class="grid" style="--min:340px">
+{% for a in apps %}
+  <a class="glass" href="{{ url_for('application', app_id=a.id) }}" style="color:inherit;display:block">
+    <div class="row between"><h3 style="margin:0">{{ a.product.name }}</h3><span class="badge s-{{ a.status }}">{{ a.status|label }}</span></div>
+    <p class="mute small">{{ a.monthly_amount|money }} x {{ a.months }} months &middot; applied {{ a.created_at[:10] }}</p>
+    {% if a.status in ('active','completed') %}
+      <div class="bar" role="progressbar" aria-valuenow="{{ a.paid_n }}" aria-valuemax="{{ a.months }}"><i style="width:{{ (a.paid_n / a.months * 100)|round }}%"></i></div>
+      <p class="small" style="margin:10px 0 0">{{ a.paid_n }} of {{ a.months }} paid{% if a.next %} &middot; next due {{ a.next.due_date }} ({{ a.next.due_total|money }}){% endif %}
+        {% if a.overdue_n %}<span class="badge s-overdue">Overdue</span>{% endif %}</p>
+    {% elif a.status == 'needs_info' %}<p class="small s-needs_info" style="margin:0">The officer needs more information. Open to see what to send.</p>
+    {% elif a.status == 'rejected' %}<p class="small mute" style="margin:0">This application was not approved.</p>
+    {% else %}<p class="small mute" style="margin:0">Waiting for verification and shop approval.</p>{% endif %}
+  </a>
+{% endfor %}
+</div>
+{% else %}
+<div class="glass empty"><h3>You have no installment plans yet</h3><p class="mute">Choose a product and use the calculator to see your monthly amount before you apply.</p><a class="btn" href="{{ url_for('products') }}">Browse products</a></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Create account' if mode == 'register' else 'Log in' }}{% endblock %}
+{% block content %}
+<div class="glass" style="max-width:520px;margin:20px auto 0">
+  <h1 style="font-size:2.1rem">{{ 'Create your account' if mode == 'register' else 'Welcome back' }}</h1>
+  <form method="post" novalidate>{{ csrf_field() }}
+    {% if mode == 'register' %}
+    <div class="field"><label for="name">Full name</label><input id="name" name="name" value="{{ form.get('name','') }}" required autocomplete="name"></div>
+    <div class="two">
+      <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" placeholder="0300-1234567" value="{{ form.get('phone','') }}" required inputmode="tel"></div>
+      <div class="field"><label for="cnic">CNIC</label><input id="cnic" name="cnic" placeholder="35202-1234567-1" value="{{ form.get('cnic','') }}" required></div>
+    </div>
+    {% endif %}
+    <div class="field"><label for="email">Email</label><input id="email" type="email" name="email" value="{{ form.get('email','') }}" required autocomplete="email"></div>
+    <div class="field"><label for="password">Password</label><input id="password" type="password" name="password" required minlength="{{ 8 if mode == 'register' else 1 }}" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}"></div>
+    <button class="btn" style="width:100%" type="submit">{{ 'Create account' if mode == 'register' else 'Log in' }}</button>
+  </form>
+  <p class="small mute" style="margin:18px 0 0">{% if mode == 'register' %}Already registered? <a href="{{ url_for('login') }}">Log in</a>{% else %}New here? <a href="{{ url_for('register') }}">Create an account</a>{% endif %}</p>
+</div>
+{% endblock %}

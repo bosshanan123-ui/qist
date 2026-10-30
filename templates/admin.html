@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Admin dashboard{% endblock %}
+{% block content %}
+<div class="row between"><h1 style="font-size:2.3rem;margin:0">Shop dashboard</h1>
+  <form method="get" class="row" style="gap:8px"><input name="q" value="{{ q }}" placeholder="Find customer by name, phone or CNIC" style="width:320px"><button class="btn sm" type="submit">Search</button></form></div>
+
+{% if q %}<div class="glass" style="margin-top:24px"><h3>Results for "{{ q }}"</h3>
+{% if found %}<div class="scroll"><table><thead><tr><th>Name</th><th>Phone</th><th>CNIC</th><th>Plans</th></tr></thead><tbody>
+{% for u in found %}<tr><td>{{ u.name }}</td><td>{{ u.phone }}</td><td class="num">{{ u.cnic }}</td>
+<td>{% for x in u.apps %}<a href="{{ url_for('application', app_id=x.id) }}">{{ x.product.name }}</a> <span class="badge s-{{ x.status }}">{{ x.status|label }}</span><br>{% else %}<span class="mute">No applications</span>{% endfor %}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="mute">No customer matches that search.</p>{% endif %}</div>{% endif %}
+
+<div class="grid" style="margin-top:24px;--min:200px">
+  <div class="glass stat"><b>{{ stats.customers }}</b><span>Customers</span></div>
+  <div class="glass stat"><b>{{ stats.active }}</b><span>Active plans</span></div>
+  <div class="glass stat"><b>{{ stats.sales|money }}</b><span>Total installment sales</span></div>
+  <div class="glass stat"><b>{{ stats.outstanding|money }}</b><span>Still to recover</span></div>
+  <div class="glass stat"><b style="color:var(--rose)">{{ stats.overdue_n }}</b><span>Overdue installments ({{ stats.overdue_amt|money }})</span></div>
+</div>
+
+<section style="margin-top:36px"><h2>Payments waiting for confirmation</h2><div class="glass">
+{% if pending_pay %}<div class="scroll"><table><thead><tr><th>Customer</th><th>Product</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody>
+{% for p in pending_pay %}<tr><td>{{ p.application.customer.name }}</td><td><a href="{{ url_for('application', app_id=p.application.id) }}">{{ p.application.product.name }}</a></td>
+<td>{{ p.method|label }}</td><td class="num">{{ p.reference }}</td><td class="num">{{ p.amount|money }}</td>
+<td><form method="post" class="row" style="gap:6px;justify-content:flex-end">{{ csrf_field() }}
+<button class="btn sm" formaction="{{ url_for('payment_action', pid=p.id, action='confirm') }}">Confirm</button>
+<button class="btn danger sm" formaction="{{ url_for('payment_action', pid=p.id, action='reject') }}">Reject</button></form></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="mute" style="margin:0">Nothing to confirm right now.</p>{% endif %}</div></section>
+
+<section style="margin-top:36px"><h2>Verified applications awaiting your approval</h2><div class="glass">
+{% if awaiting %}<div class="scroll"><table><thead><tr><th>Customer</th><th>Product</th><th>Plan</th><th>Total</th><th></th></tr></thead><tbody>
+{% for a in awaiting %}<tr><td>{{ a.customer.name }}</td><td>{{ a.product.name }}</td><td>{{ a.months }} months</td><td class="num">{{ a.total_price|money }}</td>
+<td class="right"><a class="btn sm" href="{{ url_for('application', app_id=a.id) }}">Review and approve</a></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="mute" style="margin:0">No applications are waiting.</p>{% endif %}</div></section>
+{% endblock %}

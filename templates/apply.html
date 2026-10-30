@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import calc_core with context %}
+{% block title %}Apply: {{ prod.name }}{% endblock %}
+{% block content %}
+<h1 style="font-size:2.3rem">Apply for {{ prod.name }}</h1>
+{% if blocked %}<div class="glass empty"><h3>You cannot apply right now</h3><p class="mute">{{ blocked }}</p><a class="btn ghost" href="{{ url_for('products') }}">Back to products</a></div>
+{% else %}
+<form method="post" enctype="multipart/form-data" class="grid" style="--min:380px;align-items:start" data-calc>
+  {{ csrf_field() }}
+  <div class="glass"><h3>1. Your plan</h3>{{ calc_core(plans, prod.cash_price, True) }}</div>
+  <div class="glass stack">
+    <h3>2. Your details and documents</h3>
+    <div class="field"><label for="address">Home address</label><textarea id="address" name="address" required>{{ form.get('address','') }}</textarea></div>
+    <div class="field"><label for="cnic_doc">CNIC copy (JPG, PNG or PDF, max 2 MB)</label><input id="cnic_doc" type="file" name="cnic_doc" accept="image/jpeg,image/png,application/pdf" required></div>
+    <div class="field"><label for="bill_doc">Recent utility bill (JPG, PNG or PDF, max 2 MB)</label><input id="bill_doc" type="file" name="bill_doc" accept="image/jpeg,image/png,application/pdf" required></div>
+    <h3 style="margin-top:24px">3. Guarantor</h3>
+    <div class="field"><label for="gn">Full name</label><input id="gn" name="guarantor_name" value="{{ form.get('guarantor_name','') }}" required></div>
+    <div class="two">
+      <div class="field"><label for="gc">CNIC</label><input id="gc" name="guarantor_cnic" placeholder="35202-1234567-1" value="{{ form.get('guarantor_cnic','') }}" required></div>
+      <div class="field"><label for="gp">Phone</label><input id="gp" name="guarantor_phone" placeholder="0300-1234567" value="{{ form.get('guarantor_phone','') }}" required></div>
+    </div>
+    <div class="field"><label for="ga">Address</label><textarea id="ga" name="guarantor_address" required>{{ form.get('guarantor_address','') }}</textarea></div>
+    <button class="btn" type="submit">Submit application</button>
+    <p class="small mute">An officer may visit your home or workplace and call your guarantor before the shop approves the plan.</p>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script>window.PLANS={{ plans|tojson }};window.MIN_DOWN={{ MIN_DOWN_PCT }};</script><script src="/js/app.js"></script>{% endblock %}

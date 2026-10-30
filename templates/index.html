@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import calc_core, pcard with context %}
+{% block title %}Buy on installments, verified{% endblock %}
+{% block content %}
+<div class="hero">
+  <div>
+    <h1>Buy what you need. Pay it off monthly, with every deal verified.</h1>
+    <p class="lead">Qist replaces the shop register. Customers apply online, a field officer checks documents and guarantors, and every installment, balance and receipt stays on record.</p>
+    <div class="row"><a class="btn" href="{{ url_for('products') }}">Browse products</a><a class="btn ghost" href="{{ url_for('register') }}">Create an account</a></div>
+    <ul class="checks">
+      <li>Customers and guarantors are checked before any plan starts.</li>
+      <li>See your remaining balance and next due date at any time.</li>
+      <li>Pay by JazzCash, Easypaisa or bank transfer and download a receipt.</li>
+    </ul>
+  </div>
+  <form class="glass" data-calc onsubmit="return false" aria-label="Installment calculator">
+    <h2 style="font-size:1.4rem">Check your monthly payment</h2>
+    {{ calc_core(plans, 60000) }}
+  </form>
+</div>
+
+<section>
+  <h2>How an installment deal works</h2>
+  <ol class="steps">
+    <li class="glass"><h3>Choose a product</h3><p class="mute">Pick an item and a 3, 6 or 12 month plan. The calculator shows the monthly amount first.</p></li>
+    <li class="glass"><h3>Send your documents</h3><p class="mute">Upload your CNIC and a utility bill, and add your guarantor's details.</p></li>
+    <li class="glass"><h3>Get verified</h3><p class="mute">A verification officer reviews your file and the shop owner gives final approval.</p></li>
+    <li class="glass"><h3>Pay and track</h3><p class="mute">Pay each month online or at the counter. Every payment gets a numbered receipt.</p></li>
+  </ol>
+</section>
+
+{% if products %}
+<section>
+  <div class="row between"><h2>Available now</h2><a href="{{ url_for('products') }}">See all products</a></div>
+  <div class="grid">{% for p in products %}{{ pcard(p) }}{% endfor %}</div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script>window.PLANS={{ plans|tojson }};window.MIN_DOWN={{ MIN_DOWN_PCT }};</script><script src="/js/app.js"></script>{% endblock %}

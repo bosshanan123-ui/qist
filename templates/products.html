@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pcard with context %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<div class="row between"><h1 style="font-size:2.4rem">Products</h1>
+  <div style="width:min(340px,100%)"><label for="psearch" class="small">Search by name or category</label><input id="psearch" type="search" placeholder="e.g. refrigerator"></div></div>
+{% if products %}<div class="grid" style="margin-top:24px">{% for p in products %}{{ pcard(p) }}{% endfor %}</div>
+{% else %}<div class="glass empty"><h3>No products listed yet</h3><p class="mute">Check back soon, the shop is still adding stock.</p></div>{% endif %}
+{% endblock %}
+{% block scripts %}<script src="/js/app.js"></script>{% endblock %}

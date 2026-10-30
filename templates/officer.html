@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Verification queue{% endblock %}
+{% block content %}
+<div class="row between"><h1 style="font-size:2.3rem;margin:0">{{ 'Applicant history' if q else 'Verification queue' }}</h1>
+  <form method="get" class="row" style="gap:8px"><input name="q" value="{{ q }}" placeholder="Search by CNIC, e.g. 35202-1234567-1" style="width:300px"><button class="btn sm" type="submit">Search</button>{% if q %}<a class="btn ghost sm" href="{{ url_for('officer') }}">Clear</a>{% endif %}</form></div>
+<div class="glass" style="margin-top:24px">
+{% if apps %}<div class="scroll"><table>
+  <thead><tr><th>Applicant</th><th>CNIC</th><th>Product</th><th>Submitted</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for a in apps %}<tr><td>{{ a.customer.name }}<br><span class="small mute">{{ a.customer.phone }}</span></td><td class="num">{{ a.customer.cnic }}</td><td>{{ a.product.name }}</td>
+    <td>{{ a.created_at[:10] }}</td><td><span class="badge s-{{ a.status }}">{{ a.status|label }}</span></td><td><a class="btn sm" href="{{ url_for('application', app_id=a.id) }}">Review</a></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty"><h3>{{ 'No applications found for that CNIC' if q else 'The queue is clear' }}</h3><p class="mute">{{ 'Check the number and try again.' if q else 'New applications appear here as customers submit them.' }}</p></div>{% endif %}
+</div>
+{% endblock %}

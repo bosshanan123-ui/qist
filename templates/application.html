@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ a.product.name }}{% endblock %}
+{% block content %}
+<div class="row between"><div><h1 style="font-size:2.3rem;margin:0">{{ a.product.name }}</h1>
+  <p class="mute" style="margin:6px 0 0">{{ a.customer.name }} &middot; applied {{ a.created_at[:10] }}</p></div>
+  <span class="badge s-{{ a.status }}" style="font-size:.95rem">{{ a.status|label }}</span></div>
+
+<div class="grid" style="margin-top:24px">
+  <div class="glass stat"><b>{{ a.total_price|money }}</b><span>Installment price (cash price {{ a.product.cash_price|money }})</span></div>
+  <div class="glass stat"><b>{{ a.down_payment|money }}</b><span>Down payment</span></div>
+  <div class="glass stat"><b>{{ a.monthly_amount|money }}</b><span>Per month for {{ a.months }} months</span></div>
+  {% if a.status in ('active','completed') %}<div class="glass stat"><b>{{ remaining|money }}</b><span>Remaining balance &middot; {{ paid|money }} paid so far</span></div>{% endif %}
+</div>
+
+{% if a.officer_notes %}<div class="glass tight" style="margin-top:18px"><strong>Officer remarks{% if a.officer %} ({{ a.officer.name }}){% endif %}:</strong> {{ a.officer_notes }}</div>{% endif %}
+{% if a.admin_notes %}<div class="glass tight" style="margin-top:18px"><strong>Shop notes:</strong> {{ a.admin_notes }}</div>{% endif %}
+
+{# ---------- action panels ---------- #}
+{% if user.role == 'customer' %}
+  {% if a.status == 'needs_info' %}
+  <form class="glass stack" style="margin-top:18px" method="post" enctype="multipart/form-data" action="{{ url_for('resubmit', app_id=a.id) }}">{{ csrf_field() }}
+    <h3>Send the missing information</h3><p class="mute small">Upload replacement documents if the officer asked for them, then send the file back for review.</p>
+    <div class="two"><div><label for="r1">New CNIC copy (optional)</label><input id="r1" type="file" name="cnic_doc" accept="image/jpeg,image/png,application/pdf"></div>
+    <div><label for="r2">New utility bill (optional)</label><input id="r2" type="file" name="bill_doc" accept="image/jpeg,image/png,application/pdf"></div></div>
+    <button class="btn" type="submit">Send for review</button></form>
+  {% elif a.status == 'active' and nxt %}
+  <div class="glass" style="margin-top:18px"><h3>Pay installment {{ nxt.seq }} of {{ a.months }}</h3>
+    <p>Amount due: <strong class="num">{{ nxt.due_total|money }}</strong> by {{ nxt.due_date }}{% if nxt.fine %} (includes a {{ nxt.fine|money }} late fine){% endif %}</p>
+    {% if waiting %}<p class="s-pending">Your payment is waiting for the shop to confirm it.</p>
+    {% else %}
+    <form method="post" action="{{ url_for('pay', app_id=a.id) }}" class="two" style="align-items:end">{{ csrf_field() }}
+      <div><label for="method">Paid via</label><select id="method" name="method"><option value="jazzcash">JazzCash</option><option value="easypaisa">Easypaisa</option><option value="bank">Bank transfer</option></select></div>
+      <div><label for="ref">Transaction ID from your payment receipt</label><input id="ref" name="reference" required minlength="6"></div>
+      <button class="btn" type="submit">Send payment details</button></form>
+    <p class="small mute" style="margin-top:12px">Send the amount to the shop's account first, then enter the transaction ID here. Your receipt appears once the shop confirms it.</p>{% endif %}</div>
+  {% endif %}
+{% elif user.role == 'officer' and a.status in ('submitted','needs_info') %}
+  <form class="glass stack" style="margin-top:18px" method="post" action="{{ url_for('verify', app_id=a.id) }}">{{ csrf_field() }}
+    <h3>Record your verification</h3>
+    <div class="field"><label for="notes">Visit notes and remarks</label><textarea id="notes" name="notes" required minlength="5" placeholder="Home/workplace confirmed. Guarantor reached by phone and is genuine."></textarea></div>
+    <div class="row"><button class="btn" name="decision" value="approved">Approve</button><button class="btn ghost" name="decision" value="needs_info">Needs more information</button><button class="btn danger" name="decision" value="rejected">Reject</button></div></form>
+{% elif user.role == 'admin' %}
+  {% if a.status == 'verified' %}
+  <form class="glass stack" style="margin-top:18px" method="post" action="{{ url_for('decide', app_id=a.id) }}">{{ csrf_field() }}
+    <h3>Final approval</h3><p class="mute small">Approving records the {{ a.down_payment|money }} down payment, takes one unit from stock and creates the {{ a.months }}-month schedule.</p>
+    <div class="field"><label for="an">Notes (optional)</label><input id="an" name="notes"></div>
+    <div class="row"><button class="btn" name="action" value="approve">Approve and activate</button><button class="btn danger" name="action" value="reject">Reject</button></div></form>
+  {% elif a.status in ('submitted','needs_info') %}
+  <form class="glass row" style="margin-top:18px" method="post" action="{{ url_for('decide', app_id=a.id) }}">{{ csrf_field() }}
+    <span class="mute">Waiting for the verification officer.</span><button class="btn danger sm" name="action" value="reject" style="margin-left:auto">Reject application</button></form>
+  {% elif a.status == 'active' and nxt %}
+  <form class="glass row between" style="margin-top:18px" method="post" action="{{ url_for('cash', app_id=a.id) }}">{{ csrf_field() }}
+    <div><h3 style="margin:0">Cash received at the counter?</h3><span class="mute small">Records installment {{ nxt.seq }}: {{ nxt.due_total|money }}{% if nxt.fine %} (includes late fine){% endif %}</span></div>
+    <button class="btn" type="submit">Record cash payment</button></form>
+  {% endif %}
+{% endif %}
+
+<div class="grid" style="--min:420px;margin-top:18px;align-items:start">
+  <div class="glass"><h3>Customer and guarantor</h3>
+    <dl class="kv">
+      <dt>Customer</dt><dd>{{ a.customer.name }}</dd>
+      <dt>CNIC</dt><dd class="num">{{ a.customer.cnic }}</dd>
+      <dt>Phone</dt><dd>{{ a.customer.phone }}</dd>
+      <dt>Address</dt><dd>{{ a.address }}</dd>
+      <dt>Guarantor</dt><dd>{{ a.guarantor_name }}</dd>
+      <dt>Guarantor CNIC</dt><dd class="num">{{ a.guarantor_cnic }}</dd>
+      <dt>Guarantor phone</dt><dd>{{ a.guarantor_phone }}</dd>
+      <dt>Guarantor address</dt><dd>{{ a.guarantor_address }}</dd>
+    </dl>
+    <div class="row" style="margin-top:16px">
+      {% if docs.cnic_doc %}<a class="btn ghost sm" href="{{ docs.cnic_doc }}" target="_blank" rel="noopener">View CNIC copy</a>{% endif %}
+      {% if docs.bill_doc %}<a class="btn ghost sm" href="{{ docs.bill_doc }}" target="_blank" rel="noopener">View utility bill</a>{% endif %}</div>
+  </div>
+
+  {% if insts %}
+  <div class="glass"><h3>Installment schedule</h3><div class="scroll"><table>
+    <thead><tr><th>#</th><th>Due</th><th>Amount</th><th>Fine</th><th>Status</th></tr></thead>
+    <tbody>{% for i in insts %}<tr><td>{{ i.seq }}</td><td class="num">{{ i.due_date }}</td><td class="num">{{ i.amount|money }}</td>
+      <td class="num">{{ i.fine|money if i.fine else '-' }}</td>
+      <td><span class="badge s-{{ 'overdue' if i.overdue else i.status }}">{{ 'Overdue' if i.overdue else i.status|label }}</span></td></tr>{% endfor %}</tbody></table></div></div>
+  {% endif %}
+</div>
+
+{% if pays %}
+<div class="glass" style="margin-top:18px"><h3>Payments</h3><div class="scroll"><table>
+  <thead><tr><th>Date</th><th>Transaction</th><th>Type</th><th>Method</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for p in pays %}<tr><td>{{ p.created_at[:10] }}</td><td class="num">{{ p.txn_id }}</td><td>{{ p.kind|label }}</td><td>{{ p.method|label }}</td>
+    <td class="num">{{ p.amount|money }}</td><td><span class="badge s-{{ p.status }}">{{ p.status|label }}</span></td>
+    <td>{% if p.status == 'confirmed' %}<a href="{{ url_for('receipt', pid=p.id) }}">Receipt</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endif %}
+{% endblock %}
