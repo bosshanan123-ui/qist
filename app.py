@@ -108,17 +108,23 @@ def overdue_count(uid):
 
 
 ALLOWED = {"image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf"}
+IMAGES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 
 
-def upload(file, folder):
+def upload(file, folder, bucket="documents", types=None):
+    types = types or ALLOWED
     if not file or not file.filename:
         return None
     data = file.read()
-    if not data or len(data) > 2 * 1024 * 1024 or file.mimetype not in ALLOWED:
+    if not data or len(data) > 2 * 1024 * 1024 or file.mimetype not in types:
         return None
-    path = f"{folder}/{uuid.uuid4().hex}.{ALLOWED[file.mimetype]}"
-    db().storage.from_("documents").upload(path, data, {"content-type": file.mimetype})
+    path = f"{folder}/{uuid.uuid4().hex}.{types[file.mimetype]}"
+    db().storage.from_(bucket).upload(path, data, {"content-type": file.mimetype})
     return path
+
+
+def product_image_url(path):
+    return f"{os.environ['SUPABASE_URL'].rstrip('/')}/storage/v1/object/public/products/{path}"
 
 
 def signed(path):
@@ -505,13 +511,17 @@ def admin():
 def admin_products():
     if request.method == "POST":
         name, price = request.form.get("name", "").strip(), to_int(request.form.get("cash_price"))
+        img_file = request.files.get("image")
+        img = upload(img_file, "items", "products", IMAGES)
         if len(name) < 2 or price <= 0:
             flash("Enter a product name and a cash price above zero.", "error")
+        elif img_file and img_file.filename and not img:
+            flash("The photo must be a JPG, PNG or WebP image under 2 MB.", "error")
         else:
             T("products").insert({"name": name, "category": request.form.get("category", "").strip() or "General",
                                   "description": request.form.get("description", "").strip(), "cash_price": price,
                                   "stock": max(0, to_int(request.form.get("stock"))),
-                                  "image_url": request.form.get("image_url", "").strip() or None}).execute()
+                                  "image_url": product_image_url(img) if img else None}).execute()
             audit("product_added", name)
             flash("Product added.", "success")
         return redirect(url_for("admin_products"))
@@ -524,9 +534,16 @@ def admin_products():
 def admin_product_update(pid):
     price = to_int(request.form.get("cash_price"))
     if price <= 0: abort(400)
-    T("products").update({"name": request.form.get("name", "").strip(), "cash_price": price,
-                          "stock": max(0, to_int(request.form.get("stock"))),
-                          "active": request.form.get("active") == "on"}).eq("id", str(pid)).execute()
+    upd = {"name": request.form.get("name", "").strip(), "cash_price": price,
+           "stock": max(0, to_int(request.form.get("stock"))), "active": request.form.get("active") == "on"}
+    img_file = request.files.get("image")
+    if img_file and img_file.filename:
+        img = upload(img_file, "items", "products", IMAGES)
+        if not img:
+            flash("The photo must be a JPG, PNG or WebP image under 2 MB.", "error")
+            return redirect(url_for("admin_products"))
+        upd["image_url"] = product_image_url(img)
+    T("products").update(upd).eq("id", str(pid)).execute()
     audit("product_updated", str(pid))
     flash("Product saved.", "success")
     return redirect(url_for("admin_products"))

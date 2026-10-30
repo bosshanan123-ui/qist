@@ -3,12 +3,12 @@
 {% block content %}
 <h1 style="font-size:2.3rem">Inventory and plans</h1>
 <div class="grid" style="--min:420px;align-items:start">
-  <form class="glass stack" method="post">{{ csrf_field() }}<h3>Add a product</h3>
+  <form class="glass stack" method="post" enctype="multipart/form-data">{{ csrf_field() }}<h3>Add a product</h3>
     <div class="field"><label for="n">Name</label><input id="n" name="name" required></div>
     <div class="two"><div class="field"><label for="c">Category</label><input id="c" name="category" placeholder="Bikes"></div>
     <div class="field"><label for="p">Cash price (Rs)</label><input id="p" name="cash_price" type="number" min="1" required></div></div>
     <div class="two"><div class="field"><label for="s">Stock</label><input id="s" name="stock" type="number" min="0" value="1"></div>
-    <div class="field"><label for="im">Image URL (optional)</label><input id="im" name="image_url" type="url"></div></div>
+    <div class="field"><label for="im">Product photo (JPG, PNG or WebP, max 2 MB)</label><input id="im" name="image" type="file" accept="image/jpeg,image/png,image/webp"></div></div>
     <div class="field"><label for="d">Description</label><input id="d" name="description"></div>
     <button class="btn" type="submit">Add product</button></form>
   <form class="glass stack" method="post" action="{{ url_for('admin_plans') }}">{{ csrf_field() }}<h3>Markup by plan length</h3>
@@ -17,9 +17,10 @@
     <button class="btn" type="submit">Save markup rates</button></form>
 </div>
 <div class="glass" style="margin-top:18px"><h3>All products</h3><div class="scroll"><table>
-<thead><tr><th>Name</th><th>Cash price</th><th>Stock</th><th>Listed</th><th></th></tr></thead><tbody>
+<thead><tr><th>Photo</th><th>Name</th><th>Cash price</th><th>Stock</th><th>Listed</th><th></th></tr></thead><tbody>
 {% for p in items %}<tr>
-<td><form id="f{{ p.id }}" method="post" action="{{ url_for('admin_product_update', pid=p.id) }}">{{ csrf_field() }}</form><input form="f{{ p.id }}" name="name" value="{{ p.name }}" aria-label="Name"></td>
+<td>{% if p.image_url %}<img src="{{ p.image_url }}" alt="" style="width:64px;height:48px;object-fit:cover;border-radius:10px;display:block;margin-bottom:6px">{% endif %}<input form="f{{ p.id }}" name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="New photo" style="width:190px;font-size:.8rem"></td>
+<td><form id="f{{ p.id }}" method="post" enctype="multipart/form-data" action="{{ url_for('admin_product_update', pid=p.id) }}">{{ csrf_field() }}</form><input form="f{{ p.id }}" name="name" value="{{ p.name }}" aria-label="Name"></td>
 <td><input form="f{{ p.id }}" name="cash_price" type="number" min="1" value="{{ p.cash_price }}" style="width:130px" aria-label="Cash price"></td>
 <td><input form="f{{ p.id }}" name="stock" type="number" min="0" value="{{ p.stock }}" style="width:90px" aria-label="Stock"></td>
 <td><input form="f{{ p.id }}" name="active" type="checkbox" {{ 'checked' if p.active }} aria-label="Listed"></td>
