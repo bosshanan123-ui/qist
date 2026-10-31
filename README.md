@@ -43,3 +43,12 @@ Or with the CLI: `npm i -g vercel && vercel --prod`.
 - **Online payments** use a confirm-by-admin flow: the customer pays to the shop's JazzCash/Easypaisa/bank account, enters the transaction ID, and the admin confirms it. A live gateway API needs a merchant account; the `payments` table is ready for it.
 - **SMS/email reminders** are not wired up (they need a provider such as Twilio/SendGrid). The overdue list in Reports gives the shop the numbers to call.
 - Uploads are limited to 2 MB per file because Vercel caps request size at about 4.5 MB.
+
+## Installable app + offline mode (PWA)
+- Open the live site in Chrome or Edge, click **Install app** in the top bar (or the install icon in the address bar). Qist then opens in its own window with its own logo, like desktop software.
+- **Admin and Officer** can keep working offline. Pages they opened while online (dashboard, Counter, applications, queue) stay available.
+- While offline: **Receive cash** (Counter and application page) and the officer's **Approve / Needs info / Reject** are saved on the device and sent automatically when the internet returns. The top bar shows `Offline · N waiting`; click it to see, cancel or sync items.
+- Safety: every saved action has a unique ID so it is never applied twice; if the situation changed meanwhile (for example the installment was already paid) the server refuses it and the item is marked Failed with the reason.
+- Not available offline: approving a plan (needs live stock check), confirming online payments, uploading documents, opening CNIC/bill images, and creating accounts.
+- iPhone: Safari -> Share -> Add to Home Screen.
+- After deploying a new version, bump `VERSION` in `public/sw.js` so devices refresh their saved files.

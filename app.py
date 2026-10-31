@@ -9,7 +9,7 @@ from datetime import date, datetime, timezone
 from functools import wraps
 
 from dotenv import load_dotenv
-from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
 from markupsafe import Markup
 from supabase import create_client
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -167,11 +167,35 @@ def inject():
     return {"user": g.get("user"), "today": date.today(), "MIN_DOWN_PCT": MIN_DOWN_PCT, "FINE_PCT": FINE_PCT}
 
 
+def sync_request():
+    """True when the browser's offline queue (pwa.js) is calling: answer with JSON, not a redirect."""
+    return request.headers.get("X-Sync") == "1"
+
+
+def reply(ok, msg, endpoint, **kw):
+    if sync_request():
+        return jsonify(ok=ok, message=msg), (200 if ok else 409)
+    flash(msg, "success" if ok else "error")
+    return redirect(url_for(endpoint, **kw))
+
+
+def sync_seen(cid):
+    """Idempotency: a queued action that was already applied must not run twice."""
+    return bool(cid) and bool(first(T("audit_log").select("id").eq("action", "sync_ref").eq("detail", cid)))
+
+
+def sync_mark(cid):
+    if cid:
+        audit("sync_ref", cid)
+
+
 def login_required(*roles):
     def deco(f):
         @wraps(f)
         def w(*a, **k):
             if not g.user:
+                if sync_request():
+                    return jsonify(ok=False, message="Log in again to sync."), 401
                 return redirect(url_for("login", next=request.path))
             if roles and g.user["role"] not in roles:
                 abort(403)
@@ -252,6 +276,20 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("index"))
+
+
+@app.route("/app")
+def app_home():
+    """Start page of the installed app: go straight to the user's own workspace."""
+    return redirect(url_for(HOME[g.user["role"]]) if g.user else url_for("login"))
+
+
+@app.route("/api/csrf")
+@login_required()
+def api_csrf():
+    r = jsonify(csrf=session["csrf"])
+    r.headers["Cache-Control"] = "no-store"
+    return r
 
 
 # ---- Customer ---------------------------------------------------------------
@@ -403,17 +441,22 @@ def officer():
 @app.post("/application/<uuid:app_id>/verify")
 @login_required("officer")
 def verify(app_id):
+    cid = request.form.get("client_id", "")[:64]
+    if sync_seen(cid):
+        return reply(True, "Already saved.", "officer")
     a = load_app(str(app_id))
     status = {"approved": "verified", "rejected": "rejected", "needs_info": "needs_info"}.get(request.form.get("decision"))
     notes = request.form.get("notes", "").strip()
-    if a["status"] not in ("submitted", "needs_info") or not status: abort(400)
+    if not status:
+        return reply(False, "Choose approve, needs more information or reject.", "application", app_id=a["id"])
+    if a["status"] not in ("submitted", "needs_info"):
+        return reply(False, f"This application is already {a['status'].replace('_', ' ')}. Nothing was changed.", "officer")
     if len(notes) < 5:
-        flash("Add remarks from your visit before saving.", "error")
-        return redirect(url_for("application", app_id=a["id"]))
+        return reply(False, "Add remarks from your visit before saving.", "application", app_id=a["id"])
     T("applications").update({"status": status, "officer_notes": notes, "officer_id": g.user["id"], "updated_at": now()}).eq("id", a["id"]).execute()
     audit("verification_" + status, a["id"])
-    flash("Verification result saved.", "success")
-    return redirect(url_for("officer"))
+    sync_mark(cid)
+    return reply(True, "Verification result saved.", "officer")
 
 
 # ---- Admin ------------------------------------------------------------------
@@ -449,9 +492,16 @@ def decide(app_id):
 @app.post("/application/<uuid:app_id>/cash")
 @login_required("admin")
 def cash(app_id):
+    cid = request.form.get("client_id", "")[:64]
+    if sync_seen(cid):
+        return reply(True, "Already recorded.", "application", app_id=str(app_id))
     a = load_app(str(app_id))
     inst = next_due(a["id"]) if a["status"] == "active" else None
-    if not inst: abort(400)
+    if not inst:
+        return reply(False, "Nothing is due on this plan.", "application", app_id=a["id"])
+    seq = to_int(request.form.get("inst_seq"))
+    if seq and seq != inst["seq"]:
+        return reply(False, f"Installment {seq} was already paid. The next one is {inst['seq']}. Check the plan before recording again.", "application", app_id=a["id"])
     for p in T("payments").select("id").eq("installment_id", inst["id"]).eq("status", "pending").execute().data:
         T("payments").update({"status": "rejected"}).eq("id", p["id"]).execute()
     p = T("payments").insert({"application_id": a["id"], "installment_id": inst["id"], "amount": inst["due_total"],
@@ -459,8 +509,8 @@ def cash(app_id):
                               "reference": "Paid at counter"}).execute().data[0]
     settle(p)
     audit("cash_recorded", f"{a['id']} / installment {inst['seq']}")
-    flash("Cash payment recorded and receipt created.", "success")
-    return redirect(url_for("application", app_id=a["id"]))
+    sync_mark(cid)
+    return reply(True, f"Cash payment of {inst['due_total']:,} recorded. Receipt {p['txn_id']}.", "application", app_id=a["id"])
 
 
 @app.post("/admin/payment/<uuid:pid>/<action>")
@@ -504,6 +554,19 @@ def admin():
     awaiting = T("applications").select("id,total_price,months,customer:users!customer_id(name),product:products(name)") \
         .eq("status", "verified").order("updated_at").execute().data
     return render_template("admin.html", stats=stats, pending_pay=pending_pay, awaiting=awaiting, q=q, found=found)
+
+
+@app.route("/admin/counter")
+@login_required("admin")
+def counter():
+    """POS-style counter: every active plan with its next installment, ready for one-tap cash receipt."""
+    apps = T("applications").select("id,months,customer:users!customer_id(name,phone,cnic),product:products(name)").eq("status", "active").execute().data
+    due = {}
+    if apps:
+        for i in T("installments").select("*").in_("application_id", [a["id"] for a in apps]).eq("status", "pending").order("seq").execute().data:
+            due.setdefault(i["application_id"], decorate(i))
+    rows = sorted(({**a, "next": due[a["id"]]} for a in apps if a["id"] in due), key=lambda r: r["next"]["due_date"])
+    return render_template("counter.html", rows=rows)
 
 
 @app.route("/admin/products", methods=["GET", "POST"])
@@ -621,7 +684,7 @@ def admin_reports():
     sold = T("applications").select("total_price, product:products(cash_price)").in_("status", ["active", "completed"]).execute().data
     profit = sum(s["total_price"] - s["product"]["cash_price"] for s in sold)
     fines = sum(i["fine_charged"] for i in T("installments").select("fine_charged").eq("status", "paid").execute().data)
-    log = T("audit_log").select("*").order("created_at", desc=True).limit(40).execute().data
+    log = T("audit_log").select("*").neq("action", "sync_ref").order("created_at", desc=True).limit(40).execute().data
     return render_template("admin_reports.html", months=months, defaulters=defaulters, profit=profit, fines=fines, log=log)
 
 

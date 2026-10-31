@@ -114,3 +114,7 @@ insert into products (name, category, description, cash_price, stock) values
  ('Samsung 43" Smart LED TV', 'Electronics', 'Full HD smart television', 72000, 10),
  ('Orient 8kg Washing Machine', 'Home appliances', 'Top-load automatic', 54000, 5),
  ('Infinix Hot 40 Pro', 'Mobiles', '8GB / 256GB smartphone', 46000, 12);
+
+-- Public bucket for product photos (run this if you set up the database before photos were added)
+insert into storage.buckets (id, name, public) values ('products','products', true)
+on conflict (id) do nothing;

@@ -35,7 +35,7 @@
     <p class="small mute" style="margin-top:12px">Send the amount to the shop's account first, then enter the transaction ID here. Your receipt appears once the shop confirms it.</p>{% endif %}</div>
   {% endif %}
 {% elif user.role == 'officer' and a.status in ('submitted','needs_info') %}
-  <form class="glass stack" style="margin-top:18px" method="post" action="{{ url_for('verify', app_id=a.id) }}">{{ csrf_field() }}
+  <form class="glass stack js-offline" style="margin-top:18px" method="post" action="{{ url_for('verify', app_id=a.id) }}" data-label="Verification: {{ a.customer.name }} ({{ a.product.name }})" data-next="{{ url_for('officer') }}">{{ csrf_field() }}
     <h3>Record your verification</h3>
     <div class="field"><label for="notes">Visit notes and remarks</label><textarea id="notes" name="notes" required minlength="5" placeholder="Home/workplace confirmed. Guarantor reached by phone and is genuine."></textarea></div>
     <div class="row"><button class="btn" name="decision" value="approved">Approve</button><button class="btn ghost" name="decision" value="needs_info">Needs more information</button><button class="btn danger" name="decision" value="rejected">Reject</button></div></form>
@@ -49,7 +49,7 @@
   <form class="glass row" style="margin-top:18px" method="post" action="{{ url_for('decide', app_id=a.id) }}">{{ csrf_field() }}
     <span class="mute">Waiting for the verification officer.</span><button class="btn danger sm" name="action" value="reject" style="margin-left:auto">Reject application</button></form>
   {% elif a.status == 'active' and nxt %}
-  <form class="glass row between" style="margin-top:18px" method="post" action="{{ url_for('cash', app_id=a.id) }}">{{ csrf_field() }}
+  <form class="glass row between js-offline" style="margin-top:18px" method="post" action="{{ url_for('cash', app_id=a.id) }}" data-label="Cash {{ nxt.due_total|money }} from {{ a.customer.name }} (installment {{ nxt.seq }})">{{ csrf_field() }}<input type="hidden" name="inst_seq" value="{{ nxt.seq }}">
     <div><h3 style="margin:0">Cash received at the counter?</h3><span class="mute small">Records installment {{ nxt.seq }}: {{ nxt.due_total|money }}{% if nxt.fine %} (includes late fine){% endif %}</span></div>
     <button class="btn" type="submit">Record cash payment</button></form>
   {% endif %}

@@ -5,28 +5,37 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}Qist{% endblock %} | Qist Installment Manager</title>
 <meta name="description" content="Buy on monthly installments from verified shops. Track balances, pay online and download receipts.">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a1f2b">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Qist"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body data-role="{{ user.role if user else '' }}">
 <nav class="nav" aria-label="Main">
-  <a class="brand" href="/"><i></i>Qist</a>
+  <a class="brand" href="{{ url_for('app_home') }}"><img src="/favicon.svg" alt="" width="34" height="34">Qist</a>
   <a class="l" href="{{ url_for('products') }}">Products</a>
   {% if user %}
     {% if user.role == 'customer' %}<a class="l" href="{{ url_for('dashboard') }}">My installments</a>{% endif %}
     {% if user.role == 'officer' %}<a class="l" href="{{ url_for('officer') }}">Verification queue</a>{% endif %}
     {% if user.role == 'admin' %}
       <a class="l" href="{{ url_for('admin') }}">Dashboard</a>
+      <a class="l" href="{{ url_for('counter') }}">Counter</a>
       <a class="l" href="{{ url_for('admin_products') }}">Inventory</a>
       <a class="l" href="{{ url_for('admin_users') }}">Accounts</a>
       <a class="l" href="{{ url_for('admin_reports') }}">Reports</a>
     {% endif %}
+    <button class="l netchip" id="netstate" type="button" title="Offline status">Online</button>
     <form method="post" action="{{ url_for('logout') }}">{{ csrf_field() }}<button class="l" type="submit">Log out ({{ user.name.split()[0] }})</button></form>
   {% else %}
     <a class="l" href="{{ url_for('login') }}">Log in</a>
     <a class="btn sm" href="{{ url_for('register') }}">Create account</a>
   {% endif %}
+  <button class="l installchip" id="installApp" type="button" hidden>Install app</button>
 </nav>
 <main><div class="wrap">
   {% with msgs = get_flashed_messages(with_categories=true) %}{% for c, m in msgs %}<div class="flash {{ c }}" role="alert">{{ m }}</div>{% endfor %}{% endwith %}
@@ -34,5 +43,6 @@
 </div></main>
 <footer>Qist Installment Management System &middot; Abdullah Maqsood (2025-CS-554) &amp; Abdul Hanan (2025-CS-551)</footer>
 {% block scripts %}{% endblock %}
+<script src="/js/pwa.js" defer></script>
 </body>
 </html>

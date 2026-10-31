@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Counter{% endblock %}
+{% block content %}
+<div class="row between"><div><h1 style="font-size:2.3rem;margin:0">Counter</h1>
+  <p class="mute" style="margin:6px 0 0">Receive cash installments in one tap. Works offline and syncs later.</p></div>
+  <div style="width:min(360px,100%)"><label for="csearch" class="small">Find customer by name, phone or CNIC</label><input id="csearch" type="search" placeholder="Start typing" autocomplete="off"></div></div>
+<div class="glass" style="margin-top:24px">
+{% if rows %}<div class="scroll"><table>
+  <thead><tr><th>Customer</th><th>Product</th><th>Installment</th><th>Due</th><th class="right">Amount</th><th></th></tr></thead>
+  <tbody id="crows">{% for r in rows %}
+  <tr data-q="{{ (r.customer.name ~ ' ' ~ r.customer.phone ~ ' ' ~ r.customer.cnic)|lower }}">
+    <td>{{ r.customer.name }}<br><span class="small mute">{{ r.customer.phone }}</span></td><td>{{ r.product.name }}</td>
+    <td class="num">{{ r.next.seq }} of {{ r.months }}</td>
+    <td class="num">{{ r.next.due_date }} {% if r.next.overdue %}<span class="badge s-overdue">Overdue</span>{% endif %}</td>
+    <td class="num right"><strong>{{ r.next.due_total|money }}</strong>{% if r.next.fine %}<br><span class="small mute">incl. {{ r.next.fine|money }} fine</span>{% endif %}</td>
+    <td class="right"><form method="post" action="{{ url_for('cash', app_id=r.id) }}" class="js-offline" data-label="Cash {{ r.next.due_total|money }} from {{ r.customer.name }} (installment {{ r.next.seq }})" data-confirm="Receive {{ r.next.due_total|money }} cash from {{ r.customer.name }}?">
+      {{ csrf_field() }}<input type="hidden" name="inst_seq" value="{{ r.next.seq }}"><button class="btn sm" type="submit">Receive cash</button></form></td>
+  </tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty"><h3>No installments are due</h3><p class="mute">Active plans appear here with their next installment.</p></div>{% endif %}
+</div>
+<script>
+(function(){var s=document.getElementById('csearch');if(!s)return;s.addEventListener('input',function(){var q=s.value.toLowerCase();
+document.querySelectorAll('#crows tr').forEach(function(r){r.style.display=r.dataset.q.indexOf(q)>-1?'':'none';});});})();
+</script>
+{% endblock %}
