@@ -1,5 +1,5 @@
 /* Qist service worker: offline app shell + cached pages. Bump VERSION to force an update. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC = 'qist-static-' + VERSION, PAGES = 'qist-pages-' + VERSION;
 const SHELL = ['/offline.html', '/css/style.css', '/js/app.js', '/js/pwa.js', '/manifest.json',
   '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];

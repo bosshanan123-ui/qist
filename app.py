@@ -280,8 +280,8 @@ def logout():
 
 @app.route("/app")
 def app_home():
-    """Start page of the installed app: go straight to the user's own workspace."""
-    return redirect(url_for(HOME[g.user["role"]]) if g.user else url_for("login"))
+    """Start page of the installed app: Home page for visitors (same as the website), own workspace once logged in."""
+    return redirect(url_for(HOME[g.user["role"]]) if g.user else url_for("index"))
 
 
 @app.route("/api/csrf")
